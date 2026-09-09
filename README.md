@@ -3,8 +3,8 @@
 A tiny personal script distribution service built with **Cloudflare Workers + Static Assets**.
 
 ```sh
-curl -fsSL https://your-host.example/hello | sh
-curl -fsSL https://your-host.example/hello@1.0.0 | sh
+curl -fsSL https://script-hub.xiajiayi0506.workers.dev/hello | sh
+curl -fsSL https://script-hub.xiajiayi0506.workers.dev/hello@1.0.0 | sh
 ```
 
 ## Features
@@ -26,7 +26,7 @@ npx wrangler login
 npm run deploy
 ```
 
-Wrangler prints the `workers.dev` URL. The homepage constructs curl commands from the current origin.
+Production is available at <https://script-hub.xiajiayi0506.workers.dev>. The homepage constructs curl commands from the current origin.
 
 ## Add a custom domain
 
