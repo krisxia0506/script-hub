@@ -20,3 +20,19 @@ test('does not treat direct static paths as short aliases', () => {
 test('returns null for unknown short alias', () => {
   assert.equal(resolveScriptPath('/missing'), null);
 });
+
+test('resolves latest Python script with its content type', () => {
+  assert.deepEqual(resolveScriptPath('/setup-fenno-models'), {
+    kind: 'latest',
+    assetPath: '/scripts/setup-fenno-models.py',
+    contentType: 'text/x-python; charset=utf-8',
+  });
+});
+
+test('resolves pinned Python script version', () => {
+  assert.deepEqual(resolveScriptPath('/setup-fenno-models@1.0.0'), {
+    kind: 'versioned',
+    assetPath: '/scripts/setup-fenno-models/1.0.0.py',
+    contentType: 'text/x-python; charset=utf-8',
+  });
+});
