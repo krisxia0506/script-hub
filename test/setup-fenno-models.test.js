@@ -19,7 +19,12 @@ test('Fenno setup is idempotent and preserves the existing token', () => {
       join(codexHome, 'config.toml'),
       '[model_providers.fenno]\nexperimental_bearer_token = "keep-me"\n[projects."/tmp/demo"]\ntrust_level = "trusted"',
     );
-    const env = { ...process.env, CODEX_HOME: codexHome };
+    const env = {
+      ...process.env,
+      CODEX_HOME: codexHome,
+      FENNO_API_KEY: '',
+      CODEX_FENNO_TOKEN: '',
+    };
     const script = readFileSync(latest);
 
     execFileSync('sh', [], { env, input: script });
@@ -33,6 +38,30 @@ test('Fenno setup is idempotent and preserves the existing token', () => {
     assert.match(config, /\[projects\."\/tmp\/demo"\]\ntrust_level = "trusted"/);
     assert.equal(catalog.models.length, 9);
     assert.equal(catalog.models.find(({ slug }) => slug === 'codex-auto-review').visibility, 'none');
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test('generated catalog includes fields required by Codex 0.153.4', () => {
+  const codexHome = mkdtempSync(join(tmpdir(), 'script-hub-fenno-'));
+  try {
+    const env = {
+      ...process.env,
+      CODEX_HOME: codexHome,
+      FENNO_API_KEY: '',
+      CODEX_FENNO_TOKEN: '',
+    };
+
+    execFileSync('sh', [], { env, input: readFileSync(latest) });
+
+    const catalog = JSON.parse(readFileSync(join(codexHome, 'model-catalogs/fenno.json'), 'utf8'));
+    for (const model of catalog.models) {
+      assert.equal(model.support_verbosity, false);
+      assert.deepEqual(model.truncation_policy, { mode: 'tokens', limit: 10000 });
+      assert.deepEqual(model.experimental_supported_tools, []);
+      assert.match(model.base_instructions, /You are Codex/);
+    }
   } finally {
     rmSync(codexHome, { recursive: true, force: true });
   }
