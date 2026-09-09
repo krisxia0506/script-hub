@@ -21,16 +21,21 @@ test('returns null for unknown short alias', () => {
   assert.equal(resolveScriptPath('/missing'), null);
 });
 
-test('resolves latest Fenno shell script', () => {
-  assert.deepEqual(resolveScriptPath('/setup-fenno-models'), {
+test('resolves latest Fenno Codex setup script', () => {
+  assert.deepEqual(resolveScriptPath('/setup-fenno-codex'), {
     kind: 'latest',
-    assetPath: '/scripts/setup-fenno-models.sh',
+    assetPath: '/scripts/setup-fenno-codex.sh',
   });
 });
 
-test('resolves pinned Fenno shell script version', () => {
-  assert.deepEqual(resolveScriptPath('/setup-fenno-models@1.0.0'), {
+test('resolves pinned Fenno Codex setup script version', () => {
+  assert.deepEqual(resolveScriptPath('/setup-fenno-codex@1.0.0'), {
     kind: 'versioned',
-    assetPath: '/scripts/setup-fenno-models/1.0.0.sh',
+    assetPath: '/scripts/setup-fenno-codex/1.0.0.sh',
   });
+});
+
+test('does not resolve the removed setup-fenno-models alias', () => {
+  assert.equal(resolveScriptPath('/setup-fenno-models'), null);
+  assert.equal(resolveScriptPath('/setup-fenno-models@1.0.0'), null);
 });

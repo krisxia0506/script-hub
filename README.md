@@ -7,13 +7,14 @@ curl -fsSL https://get.xiajiayi.com/hello | sh
 curl -fsSL https://get.xiajiayi.com/hello@1.0.0 | sh
 ```
 
-Configure Fenno models for Codex:
+Configure an isolated Codex environment for Fenno:
 
 ```sh
-curl -fsSL https://get.xiajiayi.com/setup-fenno-models | sh
+curl -fsSL https://get.xiajiayi.com/setup-fenno-codex \
+  | env CODEX_HOME="$HOME/.codex-fenno" sh
 ```
 
-The script backs up the existing Codex configuration, preserves the Fenno token, writes the nine-model catalog, and can be run repeatedly. Fully quit and reopen Codex after it finishes.
+The script prompts for the Fenno API Key in Chinese when no token is configured, hides the input, writes the Fenno provider and nine-model catalog, and can be run repeatedly. It preserves an existing Fenno token and backs up an existing configuration before changing it. After setup, fully quit Codex and start the isolated environment with `CODEX_HOME="$HOME/.codex-fenno" codex`.
 
 ## Features
 
@@ -65,8 +66,8 @@ For a script named `docker-clean` at version `1.0.0`:
 | `/hello` | latest version | 60 seconds |
 | `/hello@1.0.0` | pinned version | 1 year, immutable |
 | `/scripts/hello.sh` | direct static asset | Cloudflare static-asset behavior |
-| `/setup-fenno-models` | latest Fenno catalog setup | 60 seconds |
-| `/setup-fenno-models@1.0.0` | pinned Fenno catalog setup | 1 year, immutable |
+| `/setup-fenno-codex` | latest Fenno Codex setup | 60 seconds |
+| `/setup-fenno-codex@1.0.0` | pinned Fenno Codex setup | 1 year, immutable |
 | `/missing` | unknown alias | 404 |
 
 Static assets are asset-first: `/` and `/scripts/...` are served directly, while missing short paths such as `/hello` fall through to the Worker and are resolved through the `ASSETS` binding.
