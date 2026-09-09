@@ -12,7 +12,6 @@ export function resolveScriptPath(pathname) {
     return {
       kind: 'latest',
       assetPath: script.latestPath,
-      ...(script.contentType ? { contentType: script.contentType } : {}),
     };
   }
 
@@ -22,6 +21,5 @@ export function resolveScriptPath(pathname) {
   return {
     kind: 'versioned',
     assetPath,
-    ...(script.contentType ? { contentType: script.contentType } : {}),
   };
 }

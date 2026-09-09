@@ -10,7 +10,7 @@ curl -fsSL https://script-hub.xiajiayi0506.workers.dev/hello@1.0.0 | sh
 Configure Fenno models for Codex:
 
 ```sh
-curl -fsSL https://get.xiajiayi.com/setup-fenno-models | python3
+curl -fsSL https://get.xiajiayi.com/setup-fenno-models | sh
 ```
 
 The script backs up the existing Codex configuration, preserves the Fenno token, writes the nine-model catalog, and can be run repeatedly. Fully quit and reopen Codex after it finishes.

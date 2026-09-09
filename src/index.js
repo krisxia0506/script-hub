@@ -24,7 +24,7 @@ async function serveScript(request, env, resolved) {
   const assetResponse = await env.ASSETS.fetch(assetRequest);
   const headers = new Headers(assetResponse.headers);
 
-  headers.set('content-type', resolved.contentType ?? 'text/x-shellscript; charset=utf-8');
+  headers.set('content-type', 'text/x-shellscript; charset=utf-8');
   headers.set('x-content-type-options', 'nosniff');
   headers.set('cache-control', resolved.kind === 'versioned' ? VERSIONED_CACHE : LATEST_CACHE);
 

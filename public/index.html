@@ -42,8 +42,8 @@
     const commands = {
       latest: `curl -fsSL ${location.origin}/hello | sh`,
       pinned: `curl -fsSL ${location.origin}/hello@1.0.0 | sh`,
-      fennoLatest: `curl -fsSL ${location.origin}/setup-fenno-models | python3`,
-      fennoPinned: `curl -fsSL ${location.origin}/setup-fenno-models@1.0.0 | python3`,
+      fennoLatest: `curl -fsSL ${location.origin}/setup-fenno-models | sh`,
+      fennoPinned: `curl -fsSL ${location.origin}/setup-fenno-models@1.0.0 | sh`,
     };
     for (const [id, command] of Object.entries(commands)) {
       document.getElementById(id).textContent = command;
