@@ -9,11 +9,17 @@ export function resolveScriptPath(pathname) {
   if (!script) return null;
 
   if (!version) {
-    return { kind: 'latest', assetPath: script.latestPath };
+    return {
+      kind: 'latest',
+      assetPath: script.latestPath,
+    };
   }
 
   const assetPath = script.versions[version];
   if (!assetPath) return null;
 
-  return { kind: 'versioned', assetPath };
+  return {
+    kind: 'versioned',
+    assetPath,
+  };
 }

@@ -5,6 +5,7 @@ import worker from '../src/index.js';
 const assets = new Map([
   ['/scripts/hello.sh', '#!/bin/sh\necho latest\n'],
   ['/scripts/hello/1.0.0.sh', '#!/bin/sh\necho 1.0.0\n'],
+  ['/scripts/setup-fenno-models.sh', '#!/bin/sh\necho fenno\n'],
   ['/', '<!doctype html><title>Script Hub</title>'],
 ]);
 
@@ -69,4 +70,15 @@ test('root request delegates to static assets', async () => {
   const response = await worker.fetch(new Request('https://example.test/'), makeEnv());
   assert.equal(response.status, 200);
   assert.match(await response.text(), /Script Hub/);
+});
+
+test('GET Fenno alias returns shell content type', async () => {
+  const response = await worker.fetch(
+    new Request('https://example.test/setup-fenno-models'),
+    makeEnv(),
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'text/x-shellscript; charset=utf-8');
+  assert.equal(await response.text(), '#!/bin/sh\necho fenno\n');
 });
