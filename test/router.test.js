@@ -35,6 +35,13 @@ test('resolves pinned Fenno Codex setup script version', () => {
   });
 });
 
+test('resolves the latest pinned Fenno Codex setup script version', () => {
+  assert.deepEqual(resolveScriptPath('/setup-fenno-codex@1.0.1'), {
+    kind: 'versioned',
+    assetPath: '/scripts/setup-fenno-codex/1.0.1.sh',
+  });
+});
+
 test('does not resolve the removed setup-fenno-models alias', () => {
   assert.equal(resolveScriptPath('/setup-fenno-models'), null);
   assert.equal(resolveScriptPath('/setup-fenno-models@1.0.0'), null);
