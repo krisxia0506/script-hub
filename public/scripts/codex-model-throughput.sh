@@ -3,9 +3,10 @@ set -eu
 
 usage() {
   cat <<'EOF'
-用法：codex-model-tps [选项]
+用法：codex-model-throughput [选项]
 
-按模型统计本地 Codex 会话的端到端输出 TPS。
+按模型统计本地 Codex 会话的端到端输出吞吐量。
+该指标包含模型思考、工具执行和等待时间，不代表模型解码 TPS。
 
 选项：
   --hours HOURS      窗口长度（小时），默认 24
@@ -68,7 +69,7 @@ if [ -z "$until" ]; then
   until=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 fi
 
-tmp_base=${TMPDIR:-/tmp}/codex-model-tps.$$
+tmp_base=${TMPDIR:-/tmp}/codex-model-throughput.$$
 files_file=$tmp_base.files
 sorted_file=$tmp_base.sorted
 trap 'rm -f "$files_file" "$sorted_file"' EXIT HUP INT TERM
@@ -303,7 +304,7 @@ END {
   print "日志目录  : " home
   print "窗口 UTC  : " since_label " ~ " until_label
   print "扫描文件  : " files
-  print "统计口径  : 输出 token / 完整轮次端到端耗时"
+  print "统计口径  : 输出 token / 完整轮次端到端耗时（含模型思考、工具执行和等待）"
   if(read_errors){print_diag();print "错误：存在日志读取失败，结果可能不完整" > "/dev/stderr";exit 1}
   if(turn_total==0){print "\n没有找到符合条件的完整轮次。"; diagnostics=1}
   for(i=1;i<=turn_total;i++) if(selected(t_model[i])) {
@@ -323,16 +324,16 @@ END {
   print "样本单位  : " (group_by=="session"?"会话 × 模型":"轮次")
   printf "输出 token: %d\n",total_tokens
   printf "执行耗时和: %.2f 秒（%.2f 小时）\n",total_seconds,total_seconds/3600
-  printf "整体加权 TPS: %.2f token/s\n",total_tokens/total_seconds
+  printf "整体加权端到端吞吐量: %.2f token/s\n",total_tokens/total_seconds
   for(k in row_model){m=row_model[k];n=++sample_count[m];sample[m SUBSEP n]=row_tokens[k]/row_seconds[k];sample_key[m SUBSEP n]=k}
   for(m in chosen_models) sort_samples(m)
   nmodels=0;for(m in chosen_models)model_names[++nmodels]=m
   for(i=2;i<=nmodels;i++){v=model_names[i];j=i-1;while(j>=1&&model_names[j]>v){model_names[j+1]=model_names[j];j--}model_names[j+1]=v}
   print "\n================================================================"
-  print "模型对比汇总（TPS 单位：token/s）"
+  print "模型对比汇总（端到端输出吞吐量，单位：token/s）"
   printf "%-32s %5s %6s %10s %9s %9s %9s %9s\n","Model","N","Turns","Weighted","P50","P90","P95","P99"
   for(i=1;i<=nmodels;i++){m=model_names[i];printf "%-32s %5d %6d %10.2f %9.2f %9.2f %9.2f %9.2f\n",m,sample_count[m],model_turns[m],model_tokens[m]/model_seconds[m],percentile(m,50),percentile(m,90),percentile(m,95),percentile(m,99)}
-  if(show_details){print "\n       TPS      Tokens     Seconds  Turns  Session[/Turn]";for(i=1;i<=nmodels;i++){m=model_names[i];for(j=1;j<=sample_count[m];j++){k=sample_key[m SUBSEP j];printf "%10.2f  %10d  %10.2f  %5d  %s\n",row_tokens[k]/row_seconds[k],row_tokens[k],row_seconds[k],row_turns[k],row_label[k]}}}
+  if(show_details){print "\n E2E tok/s      Tokens     Seconds  Turns  Session[/Turn]";for(i=1;i<=nmodels;i++){m=model_names[i];for(j=1;j<=sample_count[m];j++){k=sample_key[m SUBSEP j];printf "%10.2f  %10d  %10.2f  %5d  %s\n",row_tokens[k]/row_seconds[k],row_tokens[k],row_seconds[k],row_turns[k],row_label[k]}}}
   print_diag()
 }
 function print_diag() {

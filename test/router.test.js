@@ -47,13 +47,18 @@ test('does not resolve the removed setup-fenno-models alias', () => {
   assert.equal(resolveScriptPath('/setup-fenno-models@1.0.0'), null);
 });
 
-test('resolves latest and pinned Codex model TPS scripts', () => {
-  assert.deepEqual(resolveScriptPath('/codex-model-tps'), {
+test('resolves latest and pinned Codex model throughput scripts', () => {
+  assert.deepEqual(resolveScriptPath('/codex-model-throughput'), {
     kind: 'latest',
-    assetPath: '/scripts/codex-model-tps.sh',
+    assetPath: '/scripts/codex-model-throughput.sh',
   });
-  assert.deepEqual(resolveScriptPath('/codex-model-tps@1.0.0'), {
+  assert.deepEqual(resolveScriptPath('/codex-model-throughput@1.0.0'), {
     kind: 'versioned',
-    assetPath: '/scripts/codex-model-tps/1.0.0.sh',
+    assetPath: '/scripts/codex-model-throughput/1.0.0.sh',
   });
+});
+
+test('does not resolve the removed Codex model TPS alias', () => {
+  assert.equal(resolveScriptPath('/codex-model-tps'), null);
+  assert.equal(resolveScriptPath('/codex-model-tps@1.0.0'), null);
 });
