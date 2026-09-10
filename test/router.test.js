@@ -36,9 +36,9 @@ test('resolves pinned Fenno Codex setup script version', () => {
 });
 
 test('resolves the latest pinned Fenno Codex setup script version', () => {
-  assert.deepEqual(resolveScriptPath('/setup-fenno-codex@1.0.1'), {
+  assert.deepEqual(resolveScriptPath('/setup-fenno-codex@1.0.2'), {
     kind: 'versioned',
-    assetPath: '/scripts/setup-fenno-codex/1.0.1.sh',
+    assetPath: '/scripts/setup-fenno-codex/1.0.2.sh',
   });
 });
 

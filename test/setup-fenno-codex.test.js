@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const latest = new URL('../public/scripts/setup-fenno-codex.sh', import.meta.url);
-const pinned = new URL('../public/scripts/setup-fenno-codex/1.0.1.sh', import.meta.url);
+const pinned = new URL('../public/scripts/setup-fenno-codex/1.0.2.sh', import.meta.url);
 
 test('latest and pinned Fenno setup scripts are byte-identical', () => {
   assert.equal(readFileSync(latest, 'utf8'), readFileSync(pinned, 'utf8'));
@@ -134,5 +134,76 @@ test('Fenno setup includes an explicitly supplied CODEX_HOME in the launch comma
     assert.match(output, new RegExp(`然后运行：CODEX_HOME="${codexHome}" codex`));
   } finally {
     rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test('Fenno setup closes Codex processes only after the user enters y', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-fenno-close-'));
+  const bin = join(home, 'bin');
+  const confirmation = join(home, 'confirmation.txt');
+  const processLog = join(home, 'pkill.log');
+  try {
+    mkdirSync(bin);
+    writeFileSync(confirmation, 'y\n');
+    writeFileSync(join(bin, 'pkill'), '#!/bin/sh\nprintf "%s\\n" "$*" >>"$FENNO_PKILL_LOG"\n');
+    writeFileSync(join(bin, 'uname'), '#!/bin/sh\nprintf "Darwin\\n"\n');
+    chmodSync(join(bin, 'pkill'), 0o755);
+    chmodSync(join(bin, 'uname'), 0o755);
+
+    const output = execFileSync('sh', [], {
+      env: {
+        ...process.env,
+        HOME: home,
+        FENNO_API_KEY: 'close-test-key',
+        CODEX_FENNO_TOKEN: '',
+        FENNO_CONFIRM_TTY: confirmation,
+        FENNO_PKILL_LOG: processLog,
+        PATH: `${bin}:${process.env.PATH}`,
+      },
+      input: readFileSync(latest),
+      encoding: 'utf8',
+    });
+
+    assert.match(output, /是否关闭所有 Codex 进程.*\[y\/N\]/);
+    assert.match(output, /已关闭所有 Codex 进程/);
+    assert.deepEqual(readFileSync(processLog, 'utf8').trim().split('\n'), [
+      '-x codex',
+      '-x Codex',
+      '-f /Codex.app/Contents/',
+    ]);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('Fenno setup keeps Codex processes running unless the user enters y', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-fenno-keep-'));
+  const bin = join(home, 'bin');
+  const confirmation = join(home, 'confirmation.txt');
+  const processLog = join(home, 'pkill.log');
+  try {
+    mkdirSync(bin);
+    writeFileSync(confirmation, '\n');
+    writeFileSync(join(bin, 'pkill'), '#!/bin/sh\nprintf "%s\\n" "$*" >>"$FENNO_PKILL_LOG"\n');
+    chmodSync(join(bin, 'pkill'), 0o755);
+
+    const output = execFileSync('sh', [], {
+      env: {
+        ...process.env,
+        HOME: home,
+        FENNO_API_KEY: 'keep-test-key',
+        CODEX_FENNO_TOKEN: '',
+        FENNO_CONFIRM_TTY: confirmation,
+        FENNO_PKILL_LOG: processLog,
+        PATH: `${bin}:${process.env.PATH}`,
+      },
+      input: readFileSync(latest),
+      encoding: 'utf8',
+    });
+
+    assert.match(output, /已保留当前 Codex 进程/);
+    assert.equal(existsSync(processLog), false);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
   }
 });
