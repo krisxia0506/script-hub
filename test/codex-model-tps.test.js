@@ -313,3 +313,49 @@ test('rejects a calculated window start before the supported Unix epoch', () => 
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test('uses payload lifecycle times for replayed turns instead of compressed outer timestamps', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  try {
+    writeSession(home, 'sessions', 'replayed.jsonl', [
+      record('2026-09-08T13:05:08.409Z', 'event_msg', {
+        type: 'task_started',
+        turn_id: 'replayed-turn',
+        started_at: 1787360944,
+      }),
+      record('2026-09-08T13:05:08.410Z', 'turn_context', { model: 'gpt-replayed' }),
+      record('2026-09-08T13:05:08.410Z', 'event_msg', {
+        type: 'token_count',
+        info: {
+          total_token_usage: { output_tokens: 65 },
+          last_token_usage: { output_tokens: 65 },
+        },
+      }),
+      record('2026-09-08T13:05:08.411Z', 'event_msg', {
+        type: 'task_complete',
+        turn_id: 'replayed-turn',
+        started_at: 1787360944,
+        completed_at: 1787360999,
+        duration_ms: 54835,
+      }),
+    ]);
+
+    const historicalOutput = runScript(home, [
+      '--since', '2026-08-22T01:00:00Z',
+      '--until', '2026-08-22T01:20:00Z',
+    ]);
+    assert.match(historicalOutput, /gpt-replayed\s+1\s+1\s+1\.19/);
+    assert.match(historicalOutput, /执行耗时和: 54\.84 秒/);
+
+    const replayWindow = spawnSync('sh', [latest.pathname,
+      '--codex-home', home,
+      '--since', '2026-09-07T00:00:00Z',
+      '--until', '2026-09-10T00:00:00Z',
+    ], { encoding: 'utf8' });
+    assert.equal(replayWindow.status, 2);
+    assert.match(replayWindow.stdout, /没有找到符合条件的完整轮次/);
+    assert.match(replayWindow.stdout, /窗口外轮次=1/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});

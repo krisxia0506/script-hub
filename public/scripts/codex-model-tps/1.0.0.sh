@@ -191,6 +191,27 @@ function json_number_after(text, object_key, number_key,    object,pattern,value
   sub(/^.*:[ \t]*/,"",value)
   return value+0
 }
+function json_direct_number(object,key,    i,c,depth,in_string,escaped,needle,rest,value) {
+  if(object=="") return -1
+  depth=0;in_string=0;escaped=0;needle="\"" key "\""
+  for(i=1;i<=length(object);i++){
+    c=substr(object,i,1)
+    if(in_string){if(escaped)escaped=0;else if(c=="\\")escaped=1;else if(c=="\"")in_string=0;continue}
+    if(depth==1 && substr(object,i,length(needle))==needle){
+      rest=substr(object,i+length(needle))
+      if(match(rest,/^[ \t]*:[ \t]*[0-9]+([.][0-9]+)?/)){
+        value=substr(rest,RSTART,RLENGTH)
+        sub(/^.*:[ \t]*/,"",value)
+        return value+0
+      }
+      return -1
+    }
+    if(c=="\""){in_string=1;continue}
+    if(c=="{")depth++
+    else if(c=="}")depth--
+  }
+  return -1
+}
 function relative(path) { return index(path,home "/")==1 ? substr(path,length(home)+2) : path }
 function percentile(model,p,    n,pos,lo,hi,fraction) {
   n=sample_count[model]; pos=(n-1)*p/100+1; lo=int(pos); hi=(pos==lo?lo:lo+1); fraction=pos-lo
@@ -217,7 +238,7 @@ BEGIN {
   if(since_epoch<0) fail("窗口起点不能早于 1970-01-01T00:00:00Z")
   if(since_epoch>=until_epoch) fail("窗口起点必须早于终点")
 }
-function process_line(line,    outer_type,payload_pos,payload,value,event,total,last,delta,end_id,finish,seconds,key) {
+function process_line(line,    outer_type,payload_pos,payload,payload_object,value,event,total,last,delta,end_id,finish,seconds,key,payload_start,payload_end,duration_ms) {
   outer_type=json_string(line,"type")
   if(outer_type!="session_meta" && outer_type!="turn_context" && outer_type!="event_msg") return
   payload_pos=index(line,"\"payload\"")
@@ -230,6 +251,9 @@ function process_line(line,    outer_type,payload_pos,payload,value,event,total,
   if(event=="task_started") {
     starts++; if(active) incomplete++
     start=epoch(json_string(line,"timestamp")); if(start<0){bad_boundaries++;active=0;return}
+    payload_object=json_object(payload,"payload")
+    payload_start=json_direct_number(payload_object,"started_at")
+    if(payload_start>=0) start=payload_start
     active=1; turn_id=json_string(payload,"turn_id"); active_model=model; tokens=0; usage=0; bad=0; return
   }
   if(event=="token_count") {
@@ -249,8 +273,14 @@ function process_line(line,    outer_type,payload_pos,payload,value,event,total,
     if(turn_id!="" && end_id!="" && turn_id!=end_id){id_mismatches++;return}
     active=0
     finish=epoch(json_string(line,"timestamp")); if(finish<0){bad_boundaries++;return}
+    payload_object=json_object(payload,"payload")
+    payload_start=json_direct_number(payload_object,"started_at")
+    payload_end=json_direct_number(payload_object,"completed_at")
+    duration_ms=json_direct_number(payload_object,"duration_ms")
+    if(payload_start>=0) start=payload_start
+    if(payload_end>=0) finish=payload_end
     if(start<since_epoch || finish>until_epoch){outside++;return}
-    seconds=finish-start
+    seconds=(duration_ms>0 ? duration_ms/1000 : finish-start)
     if(bad || !usage || seconds<=0){invalid++;return}
     key=turn_id!="" ? "turn:" turn_id : "time:" session ":" start ":" finish
     if(seen[key]){duplicates++;return}; seen[key]=1
