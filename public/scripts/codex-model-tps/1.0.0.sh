@@ -126,9 +126,10 @@ function epoch(value,    y,m,d,h,mi,se,suffix,sign,oh,om,offset,days,i,fraction,
   days += d-1
   return days*86400+h*3600+mi*60+se+fraction-offset
 }
-function iso_utc(value,    whole,fraction,days,seconds,y,m,d,h,mi,se,se_text) {
-  whole=int(value)
-  fraction=value-whole
+function iso_utc(value,    millis,whole,fraction,days,seconds,y,m,d,h,mi,se,se_text) {
+  millis=int(value*1000+0.5)
+  whole=int(millis/1000)
+  fraction=(millis-whole*1000)/1000
   days=int(whole/86400)
   seconds=whole-days*86400
   y=1970
@@ -213,6 +214,7 @@ BEGIN {
     since_epoch=until_epoch-hours_text*3600; since_label=iso_utc(since_epoch)
   }
   else { since_epoch=epoch(since_text); if(since_epoch<0) fail("--since 不是有效的 ISO 8601 时间"); since_label=iso_utc(since_epoch) }
+  if(since_epoch<0) fail("窗口起点不能早于 1970-01-01T00:00:00Z")
   if(since_epoch>=until_epoch) fail("窗口起点必须早于终点")
 }
 function process_line(line,    outer_type,payload_pos,payload,value,event,total,last,delta,end_id,finish,seconds,key) {

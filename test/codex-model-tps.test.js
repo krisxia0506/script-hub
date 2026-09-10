@@ -271,3 +271,45 @@ test('prints the calculated UTC start time when the window comes from --hours', 
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test('normalizes timezone offsets and fractional-second rollover in UTC window labels', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  try {
+    writeSession(home, 'sessions', 'leap.jsonl', [
+      record('2000-03-01T08:00:00Z', 'event_msg', { type: 'task_started', turn_id: 'leap-turn' }),
+      record('2000-03-01T08:00:00Z', 'turn_context', { model: 'gpt-leap' }),
+      record('2000-03-01T08:00:01Z', 'event_msg', { type: 'token_count', info: { total_token_usage: { output_tokens: 1 }, last_token_usage: { output_tokens: 1 } } }),
+      record('2000-03-01T08:00:01Z', 'event_msg', { type: 'task_complete', turn_id: 'leap-turn' }),
+    ]);
+
+    const output = runScript(home, [
+      '--since', '2000-02-29T23:59:59.9999-08:00',
+      '--until', '2000-03-01T08:00:01.0004Z',
+    ]);
+
+    assert.match(output, /窗口 UTC  : 2000-03-01T08:00:00Z ~ 2000-03-01T08:00:01Z/);
+    assert.doesNotMatch(output, /:60Z/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('rejects a calculated window start before the supported Unix epoch', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  try {
+    writeSession(home, 'sessions', 'epoch.jsonl', [
+      record('1970-01-01T00:00:00Z', 'session_meta', { id: 'epoch' }),
+    ]);
+
+    const result = spawnSync('sh', [latest.pathname,
+      '--codex-home', home,
+      '--hours', '2',
+      '--until', '1970-01-01T01:00:00Z',
+    ], { encoding: 'utf8' });
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /窗口起点不能早于 1970-01-01T00:00:00Z/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
