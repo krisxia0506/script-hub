@@ -30,7 +30,7 @@ test('latest and pinned Codex throughput scripts are byte-identical', () => {
 });
 
 test('calculates weighted end-to-end throughput per model from a custom CODEX_HOME and deduplicates archived turns', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     const firstTurn = [
       record('2026-09-10T00:00:00Z', 'session_meta', { id: 'session-a' }),
@@ -77,7 +77,7 @@ test('calculates weighted end-to-end throughput per model from a custom CODEX_HO
       '--until', '2026-09-10T01:00:00Z',
     ]);
 
-    assert.match(output, /日志目录  : .*script-hub-codex-tps-/);
+    assert.match(output, /日志目录  : .*script-hub-codex-throughput-/);
     assert.match(output, /统计口径  : 输出 token \/ 完整轮次端到端耗时（含模型思考、工具执行和等待）/);
     assert.match(output, /整体加权端到端吞吐量: 4\.30 token\/s/);
     assert.match(output, /模型对比汇总（端到端输出吞吐量，单位：token\/s）/);
@@ -93,7 +93,7 @@ test('calculates weighted end-to-end throughput per model from a custom CODEX_HO
 });
 
 test('preserves fractional timestamp precision and bounds token lookup to its usage object', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     writeSession(home, 'sessions', 'fractions.jsonl', [
       record('2026-09-10T00:00:00.100Z', 'event_msg', { type: 'task_started', turn_id: 'fractional' }),
@@ -132,7 +132,7 @@ test('preserves fractional timestamp precision and bounds token lookup to its us
 });
 
 test('returns a nonzero status instead of publishing partial results after a read failure', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     writeSession(home, 'sessions', 'readable.jsonl', [
       record('2026-09-10T00:00:00Z', 'event_msg', { type: 'task_started', turn_id: 'turn-ok' }),
@@ -161,7 +161,7 @@ test('returns a nonzero status instead of publishing partial results after a rea
 });
 
 test('supports turn grouping, exact model filtering, and details', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     writeSession(home, 'sessions', 'models.jsonl', [
       record('2026-09-10T00:00:00+08:00', 'event_msg', { type: 'task_started', turn_id: 'turn-a' }),
@@ -207,7 +207,7 @@ test('supports turn grouping, exact model filtering, and details', () => {
 });
 
 test('does not omit in-window turns when the session file has an old mtime', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     const end = new Date(Date.now() - 2000);
     const start = new Date(end.getTime() - 1000);
@@ -230,7 +230,7 @@ test('does not omit in-window turns when the session file has an old mtime', () 
 });
 
 test('runs without regexp escape warnings under strict POSIX awk mode', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     writeSession(home, 'sessions', 'strict-posix.jsonl', [
       record('2026-09-10T00:00:00Z', 'event_msg', { type: 'task_started', turn_id: 'strict-turn' }),
@@ -257,7 +257,7 @@ test('runs without regexp escape warnings under strict POSIX awk mode', () => {
 });
 
 test('prints the calculated UTC start time when the window comes from --hours', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     writeSession(home, 'sessions', 'window.jsonl', [
       record('2026-09-10T02:00:00Z', 'event_msg', { type: 'task_started', turn_id: 'window-turn' }),
@@ -279,7 +279,7 @@ test('prints the calculated UTC start time when the window comes from --hours', 
 });
 
 test('normalizes timezone offsets and fractional-second rollover in UTC window labels', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     writeSession(home, 'sessions', 'leap.jsonl', [
       record('2000-03-01T08:00:00Z', 'event_msg', { type: 'task_started', turn_id: 'leap-turn' }),
@@ -301,7 +301,7 @@ test('normalizes timezone offsets and fractional-second rollover in UTC window l
 });
 
 test('rejects a calculated window start before the supported Unix epoch', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     writeSession(home, 'sessions', 'epoch.jsonl', [
       record('1970-01-01T00:00:00Z', 'session_meta', { id: 'epoch' }),
@@ -321,7 +321,7 @@ test('rejects a calculated window start before the supported Unix epoch', () => 
 });
 
 test('uses payload lifecycle times for replayed turns instead of compressed outer timestamps', () => {
-  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-throughput-'));
   try {
     writeSession(home, 'sessions', 'replayed.jsonl', [
       record('2026-09-08T13:05:08.409Z', 'event_msg', {
