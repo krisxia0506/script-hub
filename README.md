@@ -16,14 +16,14 @@ curl -fsSL https://get.xiajiayi.com/setup-fenno-codex \
 
 The script prompts for the Fenno API Key in Chinese when no token is configured, hides the input, writes the Fenno provider and nine-model catalog, and can be run repeatedly. It preserves an existing Fenno token and backs up an existing configuration before changing it. If `CODEX_HOME` is omitted, the script uses Codex's default `~/.codex` directory and tells you to run `codex`. If it is explicitly supplied, the launch hint includes the same `CODEX_HOME` value. At the end, it asks whether to close all Codex processes and does so only when the user enters `y` or `Y`.
 
-Calculate end-to-end output TPS for every model in local Codex sessions:
+Calculate end-to-end output throughput for every model in local Codex sessions:
 
 ```sh
 curl -fsSL https://get.xiajiayi.com/codex-model-tps \
   | sh -s -- --codex-home "$CODEX_HOME" --hours 24
 ```
 
-The TPS calculator uses POSIX `sh`, `awk`, and standard Unix tools without Python or `jq`. It scans both `sessions` and `archived_sessions`; run it with `--help` to see explicit time ranges, exact model filters, turn-level grouping, and sample details.
+The throughput calculator uses POSIX `sh`, `awk`, and standard Unix tools without Python or `jq`. It scans both `sessions` and `archived_sessions`; run it with `--help` to see explicit time ranges, exact model filters, turn-level grouping, and sample details. Its metric divides output tokens by complete turn wall-clock time, including model thinking, tool execution, and waiting, so it is not model decoding TPS.
 
 ### Windows compatibility
 
@@ -83,8 +83,8 @@ For a script named `docker-clean` at version `1.0.0`:
 | `/scripts/hello.sh` | direct static asset | Cloudflare static-asset behavior |
 | `/setup-fenno-codex` | latest Fenno Codex setup | 60 seconds |
 | `/setup-fenno-codex@1.0.2` | pinned Fenno Codex setup | 1 year, immutable |
-| `/codex-model-tps` | latest Codex model TPS calculator | 60 seconds |
-| `/codex-model-tps@1.0.0` | pinned Codex model TPS calculator | 1 year, immutable |
+| `/codex-model-tps` | latest Codex end-to-end throughput calculator | 60 seconds |
+| `/codex-model-tps@1.0.0` | pinned Codex end-to-end throughput calculator | 1 year, immutable |
 | `/missing` | unknown alias | 404 |
 
 Static assets are asset-first: `/` and `/scripts/...` are served directly, while missing short paths such as `/hello` fall through to the Worker and are resolved through the `ASSETS` binding.

@@ -25,11 +25,11 @@ function runScript(home, args = [], extraEnv = {}) {
   });
 }
 
-test('latest and pinned Codex TPS scripts are byte-identical', () => {
+test('latest and pinned Codex throughput scripts are byte-identical', () => {
   assert.equal(readFileSync(latest, 'utf8'), readFileSync(pinned, 'utf8'));
 });
 
-test('calculates weighted TPS per model from a custom CODEX_HOME and deduplicates archived turns', () => {
+test('calculates weighted end-to-end throughput per model from a custom CODEX_HOME and deduplicates archived turns', () => {
   const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
   try {
     const firstTurn = [
@@ -78,6 +78,10 @@ test('calculates weighted TPS per model from a custom CODEX_HOME and deduplicate
     ]);
 
     assert.match(output, /日志目录  : .*script-hub-codex-tps-/);
+    assert.match(output, /统计口径  : 输出 token \/ 完整轮次端到端耗时（含模型思考、工具执行和等待）/);
+    assert.match(output, /整体加权端到端吞吐量: 4\.30 token\/s/);
+    assert.match(output, /模型对比汇总（端到端输出吞吐量，单位：token\/s）/);
+    assert.doesNotMatch(output, /整体加权 TPS|模型对比汇总（TPS/);
     assert.match(output, /有效轮次  : 3/);
     assert.match(output, /gpt-alpha\s+1\s+2\s+6\.25/);
     assert.match(output, /gpt-beta\s+1\s+1\s+3\.00/);
@@ -192,6 +196,8 @@ test('supports turn grouping, exact model filtering, and details', () => {
 
     assert.match(output, /模型筛选  : gpt-beta/);
     assert.match(output, /样本单位  : 轮次/);
+    assert.match(output, /E2E tok\/s\s+Tokens\s+Seconds\s+Turns/);
+    assert.doesNotMatch(output, /^\s+TPS\s+Tokens/m);
     assert.match(output, /gpt-beta\s+1\s+1\s+4\.00/);
     assert.match(output, /models\.jsonl\/turn-b/);
     assert.doesNotMatch(output, /^gpt-alpha\s/m);
