@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -43,6 +43,7 @@ test('calculates weighted TPS per model from a custom CODEX_HOME and deduplicate
           last_token_usage: { output_tokens: 100 },
         },
       }),
+      record('2026-09-10T00:00:09Z', 'event_msg', { type: 'task_complete', turn_id: 'nested-turn' }),
       record('2026-09-10T00:00:10Z', 'event_msg', { type: 'task_complete', turn_id: 'turn-1' }),
     ];
     writeSession(home, 'sessions', 'session-a.jsonl', [
@@ -52,8 +53,8 @@ test('calculates weighted TPS per model from a custom CODEX_HOME and deduplicate
       record('2026-09-10T00:01:09Z', 'event_msg', {
         type: 'token_count',
         info: {
-          total_token_usage: { output_tokens: 150 },
-          last_token_usage: { output_tokens: 50 },
+          total_token_usage: { output_tokens: 25 },
+          last_token_usage: { output_tokens: 25 },
         },
       }),
       record('2026-09-10T00:01:10Z', 'event_msg', { type: 'task_complete', turn_id: 'turn-2' }),
@@ -62,7 +63,7 @@ test('calculates weighted TPS per model from a custom CODEX_HOME and deduplicate
       record('2026-09-10T00:02:29Z', 'event_msg', {
         type: 'token_count',
         info: {
-          total_token_usage: { output_tokens: 240 },
+          total_token_usage: { output_tokens: 115 },
           last_token_usage: { output_tokens: 90 },
         },
       }),
@@ -78,9 +79,78 @@ test('calculates weighted TPS per model from a custom CODEX_HOME and deduplicate
 
     assert.match(output, /日志目录  : .*script-hub-codex-tps-/);
     assert.match(output, /有效轮次  : 3/);
-    assert.match(output, /gpt-alpha\s+1\s+2\s+7\.50/);
+    assert.match(output, /gpt-alpha\s+1\s+2\s+6\.25/);
     assert.match(output, /gpt-beta\s+1\s+1\s+3\.00/);
     assert.match(output, /重复轮次=1/);
+    assert.match(output, /计数回退=1/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('preserves fractional timestamp precision and bounds token lookup to its usage object', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  try {
+    writeSession(home, 'sessions', 'fractions.jsonl', [
+      record('2026-09-10T00:00:00.100Z', 'event_msg', { type: 'task_started', turn_id: 'fractional' }),
+      record('2026-09-10T00:00:00.100Z', 'turn_context', { model: 'gpt-fast' }),
+      record('2026-09-10T00:00:00.500Z', 'event_msg', {
+        type: 'token_count',
+        info: {
+          total_token_usage: { output_tokens: 10 },
+          last_token_usage: { output_tokens: 10 },
+        },
+      }),
+      record('2026-09-10T00:00:00.600Z', 'event_msg', { type: 'task_complete', turn_id: 'fractional' }),
+      record('2026-09-10T00:01:00Z', 'event_msg', { type: 'task_started', turn_id: 'malformed-usage' }),
+      record('2026-09-10T00:01:00Z', 'turn_context', { model: 'gpt-fast' }),
+      record('2026-09-10T00:01:01Z', 'event_msg', {
+        type: 'token_count',
+        info: {
+          total_token_usage: {},
+          last_token_usage: { output_tokens: 999 },
+        },
+      }),
+      record('2026-09-10T00:01:02Z', 'event_msg', { type: 'task_complete', turn_id: 'malformed-usage' }),
+    ]);
+
+    const output = runScript(home, [
+      '--since', '2026-09-10T00:00:00Z',
+      '--until', '2026-09-10T01:00:00Z',
+      '--hours', 'ignored-value',
+    ]);
+
+    assert.match(output, /gpt-fast\s+1\s+1\s+20\.00/);
+    assert.match(output, /窗口内无效轮次=1/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('returns a nonzero status instead of publishing partial results after a read failure', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  try {
+    writeSession(home, 'sessions', 'readable.jsonl', [
+      record('2026-09-10T00:00:00Z', 'event_msg', { type: 'task_started', turn_id: 'turn-ok' }),
+      record('2026-09-10T00:00:00Z', 'turn_context', { model: 'gpt-ok' }),
+      record('2026-09-10T00:00:01Z', 'event_msg', { type: 'token_count', info: { total_token_usage: { output_tokens: 1 }, last_token_usage: { output_tokens: 1 } } }),
+      record('2026-09-10T00:00:02Z', 'event_msg', { type: 'task_complete', turn_id: 'turn-ok' }),
+    ]);
+    mkdirSync(join(home, 'archived_sessions'), { recursive: true });
+    writeFileSync(join(home, 'archived_sessions', 'unreadable.jsonl'), '{}\n', { mode: 0o000 });
+
+    const result = spawnSync('sh', [latest.pathname,
+      '--codex-home', home,
+      '--since', '2026-09-10T00:00:00Z',
+      '--until', '2026-09-10T01:00:00Z',
+    ], { encoding: 'utf8' });
+
+    if (process.getuid?.() === 0) {
+      assert.equal(result.status, 0);
+    } else {
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /读取失败/);
+    }
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

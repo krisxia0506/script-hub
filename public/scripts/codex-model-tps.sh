@@ -64,18 +64,30 @@ esac
 command -v awk >/dev/null 2>&1 || { echo "错误：需要 awk" >&2; exit 1; }
 command -v find >/dev/null 2>&1 || { echo "错误：需要 find" >&2; exit 1; }
 
+until_was_default=0
 if [ -z "$until" ]; then
+  until_was_default=1
   until=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+fi
+
+scan_mtime_days=
+if [ -z "$since" ] && [ "$until_was_default" -eq 1 ]; then
+  scan_mtime_days=$(awk -v value="$hours" 'BEGIN { if (value ~ /^[0-9]+([.][0-9]+)?$/ && value > 0) print int(value / 24) + 2 }')
 fi
 
 tmp_base=${TMPDIR:-/tmp}/codex-model-tps.$$
 files_file=$tmp_base.files
-trap 'rm -f "$files_file"' EXIT HUP INT TERM
+sorted_file=$tmp_base.sorted
+trap 'rm -f "$files_file" "$sorted_file"' EXIT HUP INT TERM
 : >"$files_file"
 
 for directory in "$codex_home/sessions" "$codex_home/archived_sessions"; do
   if [ -d "$directory" ]; then
-    find "$directory" -type f -name '*.jsonl' -print >>"$files_file"
+    if [ -n "$scan_mtime_days" ]; then
+      find "$directory" -type f -name '*.jsonl' -mtime "-$scan_mtime_days" -print >>"$files_file"
+    else
+      find "$directory" -type f -name '*.jsonl' -print >>"$files_file"
+    fi
   fi
 done
 
@@ -84,15 +96,12 @@ if [ ! -s "$files_file" ]; then
   exit 1
 fi
 
-{
-  LC_ALL=C sort -u "$files_file" | while IFS= read -r file; do
-    [ -n "$file" ] || continue
-    printf '\034FILE\034%s\n' "$file"
-    if ! sed -n 'p' "$file"; then
-      printf '\034READ_ERROR\034%s\n' "$file"
-    fi
-  done
-} | awk -v home="$codex_home" -v since_text="$since" -v until_text="$until" \
+if ! LC_ALL=C sort -u "$files_file" >"$sorted_file"; then
+  echo "错误：无法整理日志文件列表" >&2
+  exit 1
+fi
+
+awk -v home="$codex_home" -v since_text="$since" -v until_text="$until" \
   -v hours_text="$hours" -v group_by="$group" -v model_csv="$models" \
   -v show_details="$details" '
 function fail(message) { print "错误：" message > "/dev/stderr"; exit_status=2; exit 2 }
@@ -101,13 +110,18 @@ function dim(y, m) {
   if (m == 2) return 28 + leap(y)
   return (m == 4 || m == 6 || m == 9 || m == 11) ? 30 : 31
 }
-function epoch(value,    y,m,d,h,mi,se,suffix,sign,oh,om,offset,days,i) {
+function epoch(value,    y,m,d,h,mi,se,suffix,sign,oh,om,offset,days,i,fraction,digits) {
   if (value !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][T ][0-9][0-9]:[0-9][0-9]:[0-9][0-9]/) return -1
   y=substr(value,1,4)+0; m=substr(value,6,2)+0; d=substr(value,9,2)+0
   h=substr(value,12,2)+0; mi=substr(value,15,2)+0; se=substr(value,18,2)+0
   if (y < 1970 || m < 1 || m > 12 || d < 1 || d > dim(y,m) || h > 23 || mi > 59 || se > 60) return -1
   suffix=substr(value,20)
-  sub(/^\.[0-9]+/, "", suffix)
+  fraction=0
+  if (match(suffix,/^\.[0-9]+/)) {
+    digits=substr(suffix,2,RLENGTH-1)
+    fraction=("0." digits)+0
+    suffix=substr(suffix,RLENGTH+1)
+  }
   offset=0
   if (suffix == "" || suffix == "Z" || suffix == "z") {
     offset=0
@@ -121,7 +135,7 @@ function epoch(value,    y,m,d,h,mi,se,suffix,sign,oh,om,offset,days,i) {
   for (i=1970; i<y; i++) days += 365 + leap(i)
   for (i=1; i<m; i++) days += dim(y,i)
   days += d-1
-  return days*86400+h*3600+mi*60+se-offset
+  return days*86400+h*3600+mi*60+se+fraction-offset
 }
 function json_string(text, key,    rest,p,i,c,out,esc) {
   rest=text
@@ -140,13 +154,28 @@ function json_string(text, key,    rest,p,i,c,out,esc) {
   }
   return ""
 }
-function json_number_after(text, object_key, number_key,    p,rest,pattern,value) {
-  p=index(text, "\"" object_key "\"")
-  if (!p) return -1
-  rest=substr(text,p)
+function json_object(text,key,    p,rest,i,c,depth,in_string,escaped,start) {
+  p=index(text,"\"" key "\"")
+  if(!p) return ""
+  rest=substr(text,p+length(key)+2)
+  p=index(rest,":");if(!p)return ""
+  rest=substr(rest,p+1);p=index(rest,"{");if(!p)return ""
+  rest=substr(rest,p);depth=0;in_string=0;escaped=0
+  for(i=1;i<=length(rest);i++){
+    c=substr(rest,i,1)
+    if(in_string){if(escaped)escaped=0;else if(c=="\\")escaped=1;else if(c=="\"")in_string=0;continue}
+    if(c=="\""){in_string=1;continue}
+    if(c=="{")depth++
+    else if(c=="}" && --depth==0)return substr(rest,1,i)
+  }
+  return ""
+}
+function json_number_after(text, object_key, number_key,    object,pattern,value) {
+  object=json_object(text,object_key)
+  if(object=="") return -1
   pattern="\\\"" number_key "\\\"[ \t]*:[ \t]*[0-9]+"
-  if (!match(rest,pattern)) return -1
-  value=substr(rest,RSTART,RLENGTH)
+  if (!match(object,pattern)) return -1
+  value=substr(object,RSTART,RLENGTH)
   sub(/^.*:[ \t]*/,"",value)
   return value+0
 }
@@ -167,57 +196,62 @@ function selected(model,    i,n,parts) {
 }
 BEGIN {
   until_epoch=epoch(until_text); if(until_epoch<0) fail("--until 不是有效的 ISO 8601 时间")
-  if(hours_text !~ /^[0-9]+([.][0-9]+)?$/ || hours_text+0<=0) fail("--hours 必须为正数")
-  if(since_text=="") { since_epoch=until_epoch-hours_text*3600; since_label="按 --hours 计算" }
+  if(since_text=="") {
+    if(hours_text !~ /^[0-9]+([.][0-9]+)?$/ || hours_text+0<=0) fail("--hours 必须为正数")
+    since_epoch=until_epoch-hours_text*3600; since_label="按 --hours 计算"
+  }
   else { since_epoch=epoch(since_text); since_label=since_text; if(since_epoch<0) fail("--since 不是有效的 ISO 8601 时间") }
   if(since_epoch>=until_epoch) fail("窗口起点必须早于终点")
 }
-/^\034FILE\034/ {
-  if(active) incomplete++
-  current_file=substr($0,7); session=relative(current_file); previous=-1; model="unknown"; active=0; files++
-  next
-}
-/^\034READ_ERROR\034/ { read_errors++; next }
-{
-  outer_type=json_string($0,"type")
-  payload_pos=index($0,"\"payload\"")
-  if(outer_type=="" || !payload_pos) { bad_lines++; if(active) bad=1; next }
-  payload=substr($0,payload_pos)
-  if(outer_type=="session_meta") { value=json_string(payload,"id"); if(value!="") session=value; next }
-  if(outer_type=="turn_context") { value=json_string(payload,"model"); if(value!=""){model=value;if(active) active_model=model}; next }
-  if(outer_type!="event_msg") next
+function process_line(line,    outer_type,payload_pos,payload,value,event,total,last,delta,end_id,finish,seconds,key) {
+  if(index(line,"\"type\":\"session_meta\"")==0 && index(line,"\"type\":\"turn_context\"")==0 && index(line,"\"type\":\"task_started\"")==0 && index(line,"\"type\":\"token_count\"")==0 && index(line,"\"type\":\"task_complete\"")==0 && index(line,"\"type\":\"task_aborted\"")==0 && index(line,"\"type\":\"turn_aborted\"")==0) return
+  outer_type=json_string(line,"type")
+  payload_pos=index(line,"\"payload\"")
+  if(outer_type=="" || !payload_pos) { bad_lines++; if(active) bad=1; return }
+  payload=substr(line,payload_pos)
+  if(outer_type=="session_meta") { value=json_string(payload,"id"); if(value!="") session=value; return }
+  if(outer_type=="turn_context") { value=json_string(payload,"model"); if(value!=""){model=value;if(active) active_model=model}; return }
+  if(outer_type!="event_msg") return
   event=json_string(payload,"type")
   if(event=="task_started") {
     starts++; if(active) incomplete++
-    start=epoch(json_string($0,"timestamp")); if(start<0){bad_boundaries++;active=0;next}
-    active=1; turn_id=json_string(payload,"turn_id"); active_model=model; tokens=0; usage=0; bad=0; next
+    start=epoch(json_string(line,"timestamp")); if(start<0){bad_boundaries++;active=0;return}
+    active=1; turn_id=json_string(payload,"turn_id"); active_model=model; tokens=0; usage=0; bad=0; return
   }
   if(event=="token_count") {
     total=json_number_after(payload,"total_token_usage","output_tokens")
     last=json_number_after(payload,"last_token_usage","output_tokens")
-    if(total<0){if(active)bad=1;previous=-1;next}
+    if(total<0){if(active)bad=1;previous=-1;return}
     if(previous<0) delta=last
-    else if(total<previous){delta=-1;counter_resets++}
+    else if(total<previous){delta=last;counter_resets++}
     else delta=total-previous
     previous=total
     if(active){if(delta<0){bad=1;previous=-1}else{tokens+=delta;usage=1}}
-    next
+    return
   }
   if(event=="task_complete") {
-    completions++; if(!active)next
-    active=0; end_id=json_string(payload,"turn_id")
-    if(turn_id!="" && end_id!="" && turn_id!=end_id){id_mismatches++;next}
-    finish=epoch(json_string($0,"timestamp")); if(finish<0){bad_boundaries++;next}
-    if(start<since_epoch || finish>until_epoch){outside++;next}
+    completions++; if(!active)return
+    end_id=json_string(payload,"turn_id")
+    if(turn_id!="" && end_id!="" && turn_id!=end_id){id_mismatches++;return}
+    active=0
+    finish=epoch(json_string(line,"timestamp")); if(finish<0){bad_boundaries++;return}
+    if(start<since_epoch || finish>until_epoch){outside++;return}
     seconds=finish-start
-    if(bad || !usage || seconds<=0){invalid++;next}
+    if(bad || !usage || seconds<=0){invalid++;return}
     key=turn_id!="" ? "turn:" turn_id : "time:" session ":" start ":" finish
-    if(seen[key]){duplicates++;next}; seen[key]=1
+    if(seen[key]){duplicates++;return}; seen[key]=1
     turn_total++; t_session[turn_total]=session; t_id[turn_total]=(turn_id!=""?turn_id:start); t_model[turn_total]=active_model; t_tokens[turn_total]=tokens; t_seconds[turn_total]=seconds
     available[active_model]=1
-    next
+    return
   }
   if(event=="task_aborted" || event=="turn_aborted"){if(active)incomplete++;active=0}
+}
+{
+  if(active) incomplete++
+  current_file=$0; session=relative(current_file); previous=-1; model="unknown"; active=0; files++
+  while((read_status=(getline log_line < current_file))>0) process_line(log_line)
+  if(read_status<0) read_errors++
+  close(current_file)
 }
 END {
   if(active) incomplete++
@@ -226,6 +260,7 @@ END {
   print "窗口 UTC  : " since_label " ~ " until_text
   print "扫描文件  : " files
   print "统计口径  : 输出 token / 完整轮次端到端耗时"
+  if(read_errors){print_diag();print "错误：存在日志读取失败，结果可能不完整" > "/dev/stderr";exit 1}
   if(turn_total==0){print "\n没有找到符合条件的完整轮次。"; diagnostics=1}
   for(i=1;i<=turn_total;i++) if(selected(t_model[i])) {
     chosen++; chosen_sessions[t_session[i]]=1; chosen_models[t_model[i]]=1; total_tokens+=t_tokens[i]; total_seconds+=t_seconds[i]
@@ -257,7 +292,7 @@ END {
   print_diag()
 }
 function print_diag() {
-  print "\n全量扫描诊断（不限定统计窗口，也不限定模型筛选）："
+  print "\n扫描诊断（不限定模型筛选）："
   printf "损坏行=%d, 读取失败=%d, 异常时间边界=%d, 计数回退=%d, 中断/未闭合轮次=%d, 窗口外轮次=%d, 轮次ID不匹配=%d, 窗口内无效轮次=%d, 重复轮次=%d\n",bad_lines,read_errors,bad_boundaries,counter_resets,incomplete,outside,id_mismatches,invalid,duplicates
 }
-'
+' "$sorted_file"
