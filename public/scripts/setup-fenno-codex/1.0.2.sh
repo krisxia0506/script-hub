@@ -109,7 +109,7 @@ fi
 confirmation_input=${FENNO_CONFIRM_TTY:-/dev/tty}
 close_codex=
 confirmation_available=0
-if { : <"$confirmation_input"; } 2>/dev/null; then
+if ( : <"$confirmation_input" ) 2>/dev/null; then
   confirmation_available=1
   printf '%s' '是否关闭所有 Codex 进程？输入 y 确认 [y/N]：'
   IFS= read -r close_codex <"$confirmation_input" || close_codex=
