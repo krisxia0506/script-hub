@@ -5,8 +5,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const latest = new URL('../public/scripts/codex-model-tps.sh', import.meta.url);
-const pinned = new URL('../public/scripts/codex-model-tps/1.0.0.sh', import.meta.url);
+const latest = new URL('../public/scripts/codex-model-throughput.sh', import.meta.url);
+const pinned = new URL('../public/scripts/codex-model-throughput/1.0.0.sh', import.meta.url);
 
 function record(timestamp, type, payload) {
   return JSON.stringify({ timestamp, type, payload });

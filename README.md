@@ -19,7 +19,7 @@ The script prompts for the Fenno API Key in Chinese when no token is configured,
 Calculate end-to-end output throughput for every model in local Codex sessions:
 
 ```sh
-curl -fsSL https://get.xiajiayi.com/codex-model-tps \
+curl -fsSL https://get.xiajiayi.com/codex-model-throughput \
   | sh -s -- --codex-home "$CODEX_HOME" --hours 24
 ```
 
@@ -83,8 +83,8 @@ For a script named `docker-clean` at version `1.0.0`:
 | `/scripts/hello.sh` | direct static asset | Cloudflare static-asset behavior |
 | `/setup-fenno-codex` | latest Fenno Codex setup | 60 seconds |
 | `/setup-fenno-codex@1.0.2` | pinned Fenno Codex setup | 1 year, immutable |
-| `/codex-model-tps` | latest Codex end-to-end throughput calculator | 60 seconds |
-| `/codex-model-tps@1.0.0` | pinned Codex end-to-end throughput calculator | 1 year, immutable |
+| `/codex-model-throughput` | latest Codex end-to-end throughput calculator | 60 seconds |
+| `/codex-model-throughput@1.0.0` | pinned Codex end-to-end throughput calculator | 1 year, immutable |
 | `/missing` | unknown alias | 404 |
 
 Static assets are asset-first: `/` and `/scripts/...` are served directly, while missing short paths such as `/hello` fall through to the Worker and are resolved through the `ASSETS` binding.

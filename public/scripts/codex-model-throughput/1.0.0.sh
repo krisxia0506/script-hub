@@ -3,7 +3,7 @@ set -eu
 
 usage() {
   cat <<'EOF'
-用法：codex-model-tps [选项]
+用法：codex-model-throughput [选项]
 
 按模型统计本地 Codex 会话的端到端输出吞吐量。
 该指标包含模型思考、工具执行和等待时间，不代表模型解码 TPS。
@@ -69,7 +69,7 @@ if [ -z "$until" ]; then
   until=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 fi
 
-tmp_base=${TMPDIR:-/tmp}/codex-model-tps.$$
+tmp_base=${TMPDIR:-/tmp}/codex-model-throughput.$$
 files_file=$tmp_base.files
 sorted_file=$tmp_base.sorted
 trap 'rm -f "$files_file" "$sorted_file"' EXIT HUP INT TERM

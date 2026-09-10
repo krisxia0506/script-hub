@@ -15,11 +15,11 @@ export const SCRIPT_CATALOG = Object.freeze({
       '1.0.2': '/scripts/setup-fenno-codex/1.0.2.sh',
     }),
   }),
-  'codex-model-tps': Object.freeze({
+  'codex-model-throughput': Object.freeze({
     latest: '1.0.0',
-    latestPath: '/scripts/codex-model-tps.sh',
+    latestPath: '/scripts/codex-model-throughput.sh',
     versions: Object.freeze({
-      '1.0.0': '/scripts/codex-model-tps/1.0.0.sh',
+      '1.0.0': '/scripts/codex-model-throughput/1.0.0.sh',
     }),
   }),
 });
