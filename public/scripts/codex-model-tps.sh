@@ -64,15 +64,8 @@ esac
 command -v awk >/dev/null 2>&1 || { echo "错误：需要 awk" >&2; exit 1; }
 command -v find >/dev/null 2>&1 || { echo "错误：需要 find" >&2; exit 1; }
 
-until_was_default=0
 if [ -z "$until" ]; then
-  until_was_default=1
   until=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-fi
-
-scan_mtime_days=
-if [ -z "$since" ] && [ "$until_was_default" -eq 1 ]; then
-  scan_mtime_days=$(awk -v value="$hours" 'BEGIN { if (value ~ /^[0-9]+([.][0-9]+)?$/ && value > 0) print int(value / 24) + 2 }')
 fi
 
 tmp_base=${TMPDIR:-/tmp}/codex-model-tps.$$
@@ -83,11 +76,7 @@ trap 'rm -f "$files_file" "$sorted_file"' EXIT HUP INT TERM
 
 for directory in "$codex_home/sessions" "$codex_home/archived_sessions"; do
   if [ -d "$directory" ]; then
-    if [ -n "$scan_mtime_days" ]; then
-      find "$directory" -type f -name '*.jsonl' -mtime "-$scan_mtime_days" -print >>"$files_file"
-    else
-      find "$directory" -type f -name '*.jsonl' -print >>"$files_file"
-    fi
+    find "$directory" -type f -name '*.jsonl' -print >>"$files_file"
   fi
 done
 
@@ -204,8 +193,8 @@ BEGIN {
   if(since_epoch>=until_epoch) fail("窗口起点必须早于终点")
 }
 function process_line(line,    outer_type,payload_pos,payload,value,event,total,last,delta,end_id,finish,seconds,key) {
-  if(index(line,"\"type\":\"session_meta\"")==0 && index(line,"\"type\":\"turn_context\"")==0 && index(line,"\"type\":\"task_started\"")==0 && index(line,"\"type\":\"token_count\"")==0 && index(line,"\"type\":\"task_complete\"")==0 && index(line,"\"type\":\"task_aborted\"")==0 && index(line,"\"type\":\"turn_aborted\"")==0) return
   outer_type=json_string(line,"type")
+  if(outer_type!="session_meta" && outer_type!="turn_context" && outer_type!="event_msg") return
   payload_pos=index(line,"\"payload\"")
   if(outer_type=="" || !payload_pos) { bad_lines++; if(active) bad=1; return }
   payload=substr(line,payload_pos)

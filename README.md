@@ -23,7 +23,7 @@ curl -fsSL https://get.xiajiayi.com/codex-model-tps \
   | sh -s -- --codex-home "$CODEX_HOME" --hours 24
 ```
 
-The TPS calculator uses POSIX `sh`, `awk`, and standard Unix tools without Python or `jq`. It scans both `sessions` and `archived_sessions`, and short default-relative windows safely preselect recently modified session files with a one-day margin. Run it with `--help` to see explicit time ranges, exact model filters, turn-level grouping, and sample details.
+The TPS calculator uses POSIX `sh`, `awk`, and standard Unix tools without Python or `jq`. It scans both `sessions` and `archived_sessions`; run it with `--help` to see explicit time ranges, exact model filters, turn-level grouping, and sample details.
 
 ### Windows compatibility
 

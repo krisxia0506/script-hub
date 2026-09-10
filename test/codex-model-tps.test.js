@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -195,6 +195,29 @@ test('supports turn grouping, exact model filtering, and details', () => {
     assert.match(output, /gpt-beta\s+1\s+1\s+4\.00/);
     assert.match(output, /models\.jsonl\/turn-b/);
     assert.doesNotMatch(output, /^gpt-alpha\s/m);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('does not omit in-window turns when the session file has an old mtime', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  try {
+    const end = new Date(Date.now() - 2000);
+    const start = new Date(end.getTime() - 1000);
+    writeSession(home, 'sessions', 'restored.jsonl', [
+      record(start.toISOString(), 'event_msg', { type: 'task_started', turn_id: 'restored-turn' }),
+      record(start.toISOString(), 'turn_context', { model: 'gpt-restored' }),
+      record(end.toISOString(), 'event_msg', { type: 'token_count', info: { total_token_usage: { output_tokens: 10 }, last_token_usage: { output_tokens: 10 } } }),
+      record(end.toISOString(), 'event_msg', { type: 'task_complete', turn_id: 'restored-turn' }),
+    ]);
+    const path = join(home, 'sessions', '2026', '09', '10', 'restored.jsonl');
+    const old = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    utimesSync(path, old, old);
+
+    const output = runScript(home, ['--hours', '1']);
+
+    assert.match(output, /gpt-restored\s+1\s+1\s+10\.00/);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
