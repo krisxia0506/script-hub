@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const latest = new URL('../public/scripts/setup-fenno-models.sh', import.meta.url);
-const pinned = new URL('../public/scripts/setup-fenno-models/1.0.0.sh', import.meta.url);
+const latest = new URL('../public/scripts/setup-fenno-codex.sh', import.meta.url);
+const pinned = new URL('../public/scripts/setup-fenno-codex/1.0.0.sh', import.meta.url);
 
 test('latest and pinned Fenno setup scripts are byte-identical', () => {
   assert.equal(readFileSync(latest, 'utf8'), readFileSync(pinned, 'utf8'));
@@ -49,7 +49,7 @@ test('generated catalog includes fields required by Codex 0.153.4', () => {
     const env = {
       ...process.env,
       CODEX_HOME: codexHome,
-      FENNO_API_KEY: '',
+      FENNO_API_KEY: 'catalog-test-key',
       CODEX_FENNO_TOKEN: '',
     };
 
@@ -62,6 +62,27 @@ test('generated catalog includes fields required by Codex 0.153.4', () => {
       assert.deepEqual(model.experimental_supported_tools, []);
       assert.match(model.base_instructions, /You are Codex/);
     }
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test('Fenno setup reports a Chinese error when no token or interactive terminal is available', () => {
+  const codexHome = mkdtempSync(join(tmpdir(), 'script-hub-fenno-'));
+  try {
+    const result = spawnSync('sh', [], {
+      env: {
+        ...process.env,
+        CODEX_HOME: codexHome,
+        FENNO_API_KEY: '',
+        CODEX_FENNO_TOKEN: '',
+      },
+      input: readFileSync(latest),
+      encoding: 'utf8',
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /未检测到 Fenno API Key/);
   } finally {
     rmSync(codexHome, { recursive: true, force: true });
   }

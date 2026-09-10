@@ -21,6 +21,29 @@ if [ -z "$token" ] && [ -f "$config" ]; then
   ' "$config")
 fi
 
+if [ -z "$token" ]; then
+  if ! (: </dev/tty) 2>/dev/null; then
+    printf '%s\n' '错误：未检测到 Fenno API Key，且当前环境无法交互输入。' >&2
+    printf '%s\n' '请在交互式终端运行，或预先设置 FENNO_API_KEY。' >&2
+    exit 1
+  fi
+
+  trap 'stty echo </dev/tty 2>/dev/null || true' 0 HUP INT TERM
+  stty -echo </dev/tty
+  printf '%s' '请输入 Fenno API Key（输入内容不会显示）：' >/dev/tty
+  IFS= read -r token </dev/tty || true
+  stty echo </dev/tty
+  trap - 0 HUP INT TERM
+  printf '\n' >/dev/tty
+
+  if [ -z "$token" ]; then
+    printf '%s\n' '错误：Fenno API Key 不能为空。' >&2
+    exit 1
+  fi
+  FENNO_API_KEY=$token
+  export FENNO_API_KEY
+fi
+
 if [ -f "$config" ]; then
   backup=${config}.bak-fenno-$(date +%Y%m%d%H%M%S)
   cp -p "$config" "$backup"
@@ -71,7 +94,5 @@ escaped_token=$(printf '%s' "$token" | sed 's/[\\"]/\\&/g')
 mv "$new_config" "$config"
 printf 'updated %s\n' "$config"
 
-if [ -z "$token" ]; then
-  printf '%s\n' 'missing Fenno token: set FENNO_API_KEY or add experimental_bearer_token'
-fi
-printf '%s\n' 'fully quit Codex TUI/Desktop, then run: codex'
+printf '%s\n' 'Fenno Codex 配置完成。'
+printf '请完全退出 Codex TUI/Desktop，然后运行：CODEX_HOME="%s" codex\n' "$codex_home"
