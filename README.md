@@ -14,7 +14,13 @@ curl -fsSL https://get.xiajiayi.com/setup-fenno-codex \
   | env CODEX_HOME="$HOME/.codex-fenno" sh
 ```
 
-The script prompts for the Fenno API Key in Chinese when no token is configured, hides the input, writes the Fenno provider and nine-model catalog, and can be run repeatedly. It preserves an existing Fenno token and backs up an existing configuration before changing it. After setup, fully quit Codex and start the isolated environment with `CODEX_HOME="$HOME/.codex-fenno" codex`.
+The script prompts for the Fenno API Key in Chinese when no token is configured, hides the input, writes the Fenno provider and nine-model catalog, and can be run repeatedly. It preserves an existing Fenno token and backs up an existing configuration before changing it. If `CODEX_HOME` is omitted, the script uses Codex's default `~/.codex` directory and tells you to run `codex`. If it is explicitly supplied, the launch hint includes the same `CODEX_HOME` value.
+
+### Windows compatibility
+
+This installer is a POSIX `sh` script. It supports macOS and Linux. On Windows, run it inside WSL and start Codex inside the same WSL environment; its `$HOME/.codex` is separate from the native Windows Codex configuration.
+
+Native PowerShell cannot run the documented `curl | env ... sh` pipeline because it does not provide the required POSIX commands. Git Bash has most of the script's dependencies, but its path conversion when launching native Windows Codex has not been validated, so it is not currently listed as a supported installation method. A separate PowerShell installer would be required for first-class native Windows support.
 
 ## Features
 
@@ -67,7 +73,7 @@ For a script named `docker-clean` at version `1.0.0`:
 | `/hello@1.0.0` | pinned version | 1 year, immutable |
 | `/scripts/hello.sh` | direct static asset | Cloudflare static-asset behavior |
 | `/setup-fenno-codex` | latest Fenno Codex setup | 60 seconds |
-| `/setup-fenno-codex@1.0.0` | pinned Fenno Codex setup | 1 year, immutable |
+| `/setup-fenno-codex@1.0.1` | pinned Fenno Codex setup | 1 year, immutable |
 | `/missing` | unknown alias | 404 |
 
 Static assets are asset-first: `/` and `/scripts/...` are served directly, while missing short paths such as `/hello` fall through to the Worker and are resolved through the `ASSETS` binding.

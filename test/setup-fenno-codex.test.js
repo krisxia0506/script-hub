@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const latest = new URL('../public/scripts/setup-fenno-codex.sh', import.meta.url);
-const pinned = new URL('../public/scripts/setup-fenno-codex/1.0.0.sh', import.meta.url);
+const pinned = new URL('../public/scripts/setup-fenno-codex/1.0.1.sh', import.meta.url);
 
 test('latest and pinned Fenno setup scripts are byte-identical', () => {
   assert.equal(readFileSync(latest, 'utf8'), readFileSync(pinned, 'utf8'));
@@ -83,6 +83,55 @@ test('Fenno setup reports a Chinese error when no token or interactive terminal 
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /未检测到 Fenno API Key/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test('Fenno setup uses Chinese status messages and the default Codex launch command', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-fenno-home-'));
+  try {
+    const env = {
+      ...process.env,
+      HOME: home,
+      FENNO_API_KEY: 'output-test-key',
+      CODEX_FENNO_TOKEN: '',
+    };
+    delete env.CODEX_HOME;
+
+    const output = execFileSync('sh', [], {
+      env,
+      input: readFileSync(latest),
+      encoding: 'utf8',
+    });
+
+    assert.match(output, /已写入模型目录：.*（共 9 个模型）/);
+    assert.match(output, /已更新配置：/);
+    assert.match(output, /然后运行：codex/);
+    assert.doesNotMatch(output, /\b(?:backup|wrote|updated|models)\b/i);
+    assert.doesNotMatch(output, /然后运行：CODEX_HOME=/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('Fenno setup includes an explicitly supplied CODEX_HOME in the launch command', () => {
+  const codexHome = mkdtempSync(join(tmpdir(), 'script-hub-fenno-'));
+  try {
+    writeFileSync(join(codexHome, 'config.toml'), 'model = "existing"\n');
+    const output = execFileSync('sh', [], {
+      env: {
+        ...process.env,
+        CODEX_HOME: codexHome,
+        FENNO_API_KEY: 'output-test-key',
+        CODEX_FENNO_TOKEN: '',
+      },
+      input: readFileSync(latest),
+      encoding: 'utf8',
+    });
+
+    assert.match(output, /已备份配置：/);
+    assert.match(output, new RegExp(`然后运行：CODEX_HOME="${codexHome}" codex`));
   } finally {
     rmSync(codexHome, { recursive: true, force: true });
   }
