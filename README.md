@@ -7,11 +7,11 @@ curl -fsSL https://get.xiajiayi.com/hello | sh
 curl -fsSL https://get.xiajiayi.com/hello@1.0.0 | sh
 ```
 
-Configure an isolated Codex environment for Fenno:
+Configure Fenno for the default Codex environment:
 
 ```sh
 curl -fsSL https://get.xiajiayi.com/setup-fenno-codex \
-  | env CODEX_HOME="$HOME/.codex-fenno" sh
+  | sh
 ```
 
 The script prompts for the Fenno API Key in Chinese when no token is configured, hides the input, writes the Fenno provider and nine-model catalog, and can be run repeatedly. It preserves an existing Fenno token and backs up an existing configuration before changing it. If `CODEX_HOME` is omitted, the script uses Codex's default `~/.codex` directory and tells you to run `codex`. If it is explicitly supplied, the launch hint includes the same `CODEX_HOME` value. At the end, it asks whether to close all Codex processes and does so only when the user enters `y` or `Y`.
