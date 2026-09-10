@@ -222,3 +222,30 @@ test('does not omit in-window turns when the session file has an old mtime', () 
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test('runs without regexp escape warnings under strict POSIX awk mode', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  try {
+    writeSession(home, 'sessions', 'strict-posix.jsonl', [
+      record('2026-09-10T00:00:00Z', 'event_msg', { type: 'task_started', turn_id: 'strict-turn' }),
+      record('2026-09-10T00:00:00Z', 'turn_context', { model: 'gpt-strict' }),
+      record('2026-09-10T00:00:01Z', 'event_msg', { type: 'token_count', info: { total_token_usage: { output_tokens: 2 }, last_token_usage: { output_tokens: 2 } } }),
+      record('2026-09-10T00:00:02Z', 'event_msg', { type: 'task_complete', turn_id: 'strict-turn' }),
+    ]);
+
+    const result = spawnSync('sh', [latest.pathname,
+      '--codex-home', home,
+      '--since', '2026-09-10T00:00:00Z',
+      '--until', '2026-09-10T01:00:00Z',
+    ], {
+      encoding: 'utf8',
+      env: { ...process.env, POSIXLY_CORRECT: '1' },
+    });
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stderr, '');
+    assert.match(result.stdout, /gpt-strict\s+1\s+1\s+1\.00/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});

@@ -128,7 +128,7 @@ function epoch(value,    y,m,d,h,mi,se,suffix,sign,oh,om,offset,days,i,fraction,
 }
 function json_string(text, key,    rest,p,i,c,out,esc) {
   rest=text
-  p=match(rest, "\\\"" key "\\\"[ \t]*:[ \t]*\\\"")
+  p=match(rest, "\"" key "\"[ \t]*:[ \t]*\"")
   if (!p) return ""
   rest=substr(rest, RSTART+RLENGTH)
   out=""; esc=0
@@ -162,7 +162,7 @@ function json_object(text,key,    p,rest,i,c,depth,in_string,escaped,start) {
 function json_number_after(text, object_key, number_key,    object,pattern,value) {
   object=json_object(text,object_key)
   if(object=="") return -1
-  pattern="\\\"" number_key "\\\"[ \t]*:[ \t]*[0-9]+"
+  pattern="\"" number_key "\"[ \t]*:[ \t]*[0-9]+"
   if (!match(object,pattern)) return -1
   value=substr(object,RSTART,RLENGTH)
   sub(/^.*:[ \t]*/,"",value)
