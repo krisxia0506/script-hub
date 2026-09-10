@@ -7,11 +7,12 @@ export const SCRIPT_CATALOG = Object.freeze({
     }),
   }),
   'setup-fenno-codex': Object.freeze({
-    latest: '1.0.1',
+    latest: '1.0.2',
     latestPath: '/scripts/setup-fenno-codex.sh',
     versions: Object.freeze({
       '1.0.0': '/scripts/setup-fenno-codex/1.0.0.sh',
       '1.0.1': '/scripts/setup-fenno-codex/1.0.1.sh',
+      '1.0.2': '/scripts/setup-fenno-codex/1.0.2.sh',
     }),
   }),
 });

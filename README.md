@@ -14,7 +14,7 @@ curl -fsSL https://get.xiajiayi.com/setup-fenno-codex \
   | env CODEX_HOME="$HOME/.codex-fenno" sh
 ```
 
-The script prompts for the Fenno API Key in Chinese when no token is configured, hides the input, writes the Fenno provider and nine-model catalog, and can be run repeatedly. It preserves an existing Fenno token and backs up an existing configuration before changing it. If `CODEX_HOME` is omitted, the script uses Codex's default `~/.codex` directory and tells you to run `codex`. If it is explicitly supplied, the launch hint includes the same `CODEX_HOME` value.
+The script prompts for the Fenno API Key in Chinese when no token is configured, hides the input, writes the Fenno provider and nine-model catalog, and can be run repeatedly. It preserves an existing Fenno token and backs up an existing configuration before changing it. If `CODEX_HOME` is omitted, the script uses Codex's default `~/.codex` directory and tells you to run `codex`. If it is explicitly supplied, the launch hint includes the same `CODEX_HOME` value. At the end, it asks whether to close all Codex processes and does so only when the user enters `y` or `Y`.
 
 ### Windows compatibility
 
@@ -73,7 +73,7 @@ For a script named `docker-clean` at version `1.0.0`:
 | `/hello@1.0.0` | pinned version | 1 year, immutable |
 | `/scripts/hello.sh` | direct static asset | Cloudflare static-asset behavior |
 | `/setup-fenno-codex` | latest Fenno Codex setup | 60 seconds |
-| `/setup-fenno-codex@1.0.1` | pinned Fenno Codex setup | 1 year, immutable |
+| `/setup-fenno-codex@1.0.2` | pinned Fenno Codex setup | 1 year, immutable |
 | `/missing` | unknown alias | 404 |
 
 Static assets are asset-first: `/` and `/scripts/...` are served directly, while missing short paths such as `/hello` fall through to the Worker and are resolved through the `ASSETS` binding.
