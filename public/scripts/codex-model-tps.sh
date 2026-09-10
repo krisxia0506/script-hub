@@ -126,6 +126,28 @@ function epoch(value,    y,m,d,h,mi,se,suffix,sign,oh,om,offset,days,i,fraction,
   days += d-1
   return days*86400+h*3600+mi*60+se+fraction-offset
 }
+function iso_utc(value,    whole,fraction,days,seconds,y,m,d,h,mi,se,se_text) {
+  whole=int(value)
+  fraction=value-whole
+  days=int(whole/86400)
+  seconds=whole-days*86400
+  y=1970
+  while(days>=365+leap(y)){days-=365+leap(y);y++}
+  m=1
+  while(days>=dim(y,m)){days-=dim(y,m);m++}
+  d=days+1
+  h=int(seconds/3600)
+  seconds-=h*3600
+  mi=int(seconds/60)
+  se=seconds-mi*60
+  if(fraction<0.0000005) se_text=sprintf("%02d",se)
+  else {
+    se_text=sprintf("%06.3f",se+fraction)
+    sub(/0+$/, "", se_text)
+    sub(/\.$/, "", se_text)
+  }
+  return sprintf("%04d-%02d-%02dT%02d:%02d:%sZ",y,m,d,h,mi,se_text)
+}
 function json_string(text, key,    rest,p,i,c,out,esc) {
   rest=text
   p=match(rest, "\"" key "\"[ \t]*:[ \t]*\"")
@@ -185,11 +207,12 @@ function selected(model,    i,n,parts) {
 }
 BEGIN {
   until_epoch=epoch(until_text); if(until_epoch<0) fail("--until 不是有效的 ISO 8601 时间")
+  until_label=iso_utc(until_epoch)
   if(since_text=="") {
     if(hours_text !~ /^[0-9]+([.][0-9]+)?$/ || hours_text+0<=0) fail("--hours 必须为正数")
-    since_epoch=until_epoch-hours_text*3600; since_label="按 --hours 计算"
+    since_epoch=until_epoch-hours_text*3600; since_label=iso_utc(since_epoch)
   }
-  else { since_epoch=epoch(since_text); since_label=since_text; if(since_epoch<0) fail("--since 不是有效的 ISO 8601 时间") }
+  else { since_epoch=epoch(since_text); if(since_epoch<0) fail("--since 不是有效的 ISO 8601 时间"); since_label=iso_utc(since_epoch) }
   if(since_epoch>=until_epoch) fail("窗口起点必须早于终点")
 }
 function process_line(line,    outer_type,payload_pos,payload,value,event,total,last,delta,end_id,finish,seconds,key) {
@@ -246,7 +269,7 @@ END {
   if(active) incomplete++
   if(exit_status) exit exit_status
   print "日志目录  : " home
-  print "窗口 UTC  : " since_label " ~ " until_text
+  print "窗口 UTC  : " since_label " ~ " until_label
   print "扫描文件  : " files
   print "统计口径  : 输出 token / 完整轮次端到端耗时"
   if(read_errors){print_diag();print "错误：存在日志读取失败，结果可能不完整" > "/dev/stderr";exit 1}

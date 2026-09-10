@@ -249,3 +249,25 @@ test('runs without regexp escape warnings under strict POSIX awk mode', () => {
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test('prints the calculated UTC start time when the window comes from --hours', () => {
+  const home = mkdtempSync(join(tmpdir(), 'script-hub-codex-tps-'));
+  try {
+    writeSession(home, 'sessions', 'window.jsonl', [
+      record('2026-09-10T02:00:00Z', 'event_msg', { type: 'task_started', turn_id: 'window-turn' }),
+      record('2026-09-10T02:00:00Z', 'turn_context', { model: 'gpt-window' }),
+      record('2026-09-10T02:00:01Z', 'event_msg', { type: 'token_count', info: { total_token_usage: { output_tokens: 2 }, last_token_usage: { output_tokens: 2 } } }),
+      record('2026-09-10T02:00:02Z', 'event_msg', { type: 'task_complete', turn_id: 'window-turn' }),
+    ]);
+
+    const output = runScript(home, [
+      '--hours', '24',
+      '--until', '2026-09-10T03:36:53Z',
+    ]);
+
+    assert.match(output, /窗口 UTC  : 2026-09-09T03:36:53Z ~ 2026-09-10T03:36:53Z/);
+    assert.doesNotMatch(output, /按 --hours 计算/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
