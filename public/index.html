@@ -31,10 +31,10 @@
 
   <section>
     <h2>setup-fenno-codex</h2>
-    <p>Configure an isolated Codex environment for the Fenno provider.</p>
+    <p>Configure the Fenno provider for Codex.</p>
     <div class="row"><strong>Latest</strong><button data-copy="fennoLatest">Copy</button></div>
     <pre id="fennoLatest"></pre>
-    <div class="row"><strong>Pinned v1.0.0</strong><button data-copy="fennoPinned">Copy</button></div>
+    <div class="row"><strong>Pinned v1.0.2</strong><button data-copy="fennoPinned">Copy</button></div>
     <pre id="fennoPinned"></pre>
   </section>
 
@@ -42,8 +42,8 @@
     const commands = {
       latest: `curl -fsSL ${location.origin}/hello | sh`,
       pinned: `curl -fsSL ${location.origin}/hello@1.0.0 | sh`,
-      fennoLatest: `curl -fsSL ${location.origin}/setup-fenno-codex | env CODEX_HOME="$HOME/.codex-fenno" sh`,
-      fennoPinned: `curl -fsSL ${location.origin}/setup-fenno-codex@1.0.0 | env CODEX_HOME="$HOME/.codex-fenno" sh`,
+      fennoLatest: `curl -fsSL ${location.origin}/setup-fenno-codex | sh`,
+      fennoPinned: `curl -fsSL ${location.origin}/setup-fenno-codex@1.0.2 | sh`,
     };
     for (const [id, command] of Object.entries(commands)) {
       document.getElementById(id).textContent = command;
